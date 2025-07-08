@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抵抗カラーコード読み取りゲーム</title>
+
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            user-select: none;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        #game-wrapper {
+            position: relative;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #start-screen {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 370px;
+        }
+
+        #start-screen h1 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        #start-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #start-button:hover {
+            background-color: #0056b3;
+        }
+
+        #game-container {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 370px;
+            position: relative;
+        }
+
+        #countdown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+            font-size: 10rem;
+            font-weight: bold;
+            color: #007bff;
+            border-radius: 15px;
+        }
+
+        #countdown-overlay:not(.hidden) {
+            display: flex;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.4em;
+        }
+
+        #info-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        #resistor-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 80px;
+            margin-bottom: 15px;
+        }
+
+        .resistor-body {
+            width: 180px;
+            height: 60px;
+            background-color: #f0c9a3;
+            border-radius: 10px;
+            position: relative;
+            border: 2px solid #d3a982;
+        }
+
+        .lead {
+            width: 60px;
+            height: 3px;
+            background-color: #8d8d8d;
+        }
+
+        .band {
+            position: absolute;
+            width: 15px;
+            height: 100%;
+            top: 0;
+        }
+
+        #band1 { left: 30px; }
+        #band2 { left: 55px; }
+        #band3 { left: 80px; }
+        #band4 { left: 120px; border-radius: 0 5px 5px 0;}
+
+        #display-panel {
+            margin-bottom: 15px;
+        }
+
+        #input-display {
+            background-color: #e9ecef;
+            min-height: 40px; /* 少し高さを確保 */
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 1.4em;
+            color: #333;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ★★★★★ ここを修正しました ★★★★★ */
+        #feedback {
+            /* 固定の高さを設定して、メッセージの有無でレイアウトがずれないようにする */
+            height: 40px; 
+            /* メッセージを上下中央に配置 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            line-height: 1.3; /* 2行になった場合も考慮 */
+        }
+        
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+
+
+        #keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .key {
+            padding: 18px 0;
+            font-size: 1.5em;
+            border: none;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .key:active {
+            background-color: #c6c7c8;
+        }
+
+        .clear-key {
+            background-color: #ffc107;
+        }
+        .clear-key:active { background-color: #d39e00; }
+
+        .dot-key {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .dot-key:active { background-color: #c6c7c8;}
+
+        .unit-key {
+            background-color: #5cb85c;
+            color: white;
+            font-weight: bold;
+        }
+        .unit-key:active { background-color: #449d44; }
+
+
+        #game-over-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #game-over-modal:not(.hidden) {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #restart-button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        /* ===== サイドバー ===== */
+        #sidebar {
+            width: 280px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section h2 {
+            font-size: 1.2em;
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        #today-best-score-wrapper {
+            text-align: center;
+        }
+
+        .score-display {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #007bff;
+            margin: 0;
+        }
+
+        #ranking-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        #ranking-list li {
+            font-size: 1.1em;
+            padding: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #ranking-list li:first-child { font-weight: bold; color: #d9534f; }
+        #ranking-list li:nth-child(2) { font-weight: bold; color: #f0ad4e; }
+        #ranking-list li:nth-child(3) { font-weight: bold; color: #5cb85c; }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #888;
+            font-weight: normal;
+            margin-left: 10px;
+        }
+
+        /* ===== 横幅レスポンシブ対応 (スマホ用スタイル) ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            
+            #game-wrapper,
+            #start-screen,
+            #game-container {
+                width: 100%;
+                max-width: 420px;
+                box-sizing: border-box;
+            }
+
+            #sidebar {
+                width: 100%;
+                max-width: 420px;
+                box-sizing: border-box;
+                margin-top: 20px;
+            }
+        }
+
+        /* ===== 縦幅レスポンシブ対応 (スマホ横向きなど、縦が短い画面用) ===== */
+        @media (max-height: 720px) and (max-width: 950px) {
+            h1 {
+                font-size: 1.2em;
+                margin-bottom: 8px;
+            }
+            #info-panel {
+                margin-bottom: 10px;
+                font-size: 1em;
+            }
+            #resistor-container {
+                height: 60px;
+                margin-bottom: 8px;
+            }
+            .resistor-body {
+                height: 45px;
+            }
+            #display-panel {
+                margin-bottom: 10px;
+            }
+            #feedback {
+                height: 35px; /* 縦幅が短い画面用に高さを調整 */
+                font-size: 0.9em;
+            }
+            .key {
+                padding: 10px 0;
+                font-size: 1.3em;
+            }
+            #keypad {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+
+        <div id="game-wrapper">
+            <div id="start-screen">
+                <h1>抵抗カラーコード読み取りゲーム</h1>
+                <button id="start-button">ゲームスタート</button>
+            </div>
+            <div id="game-container" class="hidden">
+                <div id="countdown-overlay" class="hidden"></div>
+                <h1>抵抗カラーコード読み取りゲーム</h1>
+                <div id="info-panel">
+                    <div id="score-container">スコア: <span id="score">0</span></div>
+                    <div id="timer-container">残り時間: <span id="timer">60</span>秒</div>
+                </div>
+                <div id="resistor-container">
+                    <div class="lead"></div>
+                    <div class="resistor-body">
+                        <div class="band" id="band1"></div>
+                        <div class="band" id="band2"></div>
+                        <div class="band" id="band3"></div>
+                        <div class="band" id="band4"></div>
+                    </div>
+                    <div class="lead"></div>
+                </div>
+                <div id="display-panel">
+                    <div id="input-display"></div>
+                    <div id="feedback"></div>
+                </div>
+                <div id="keypad">
+                    <button class="key num-key">1</button>
+                    <button class="key num-key">2</button>
+                    <button class="key num-key">3</button>
+                    <button class="key num-key">4</button>
+                    <button class="key num-key">5</button>
+                    <button class="key num-key">6</button>
+                    <button class="key num-key">7</button>
+                    <button class="key num-key">8</button>
+                    <button class="key num-key">9</button>
+                    <button class="key dot-key">.</button>
+                    <button class="key num-key">0</button>
+                    <button class="key clear-key">C</button>
+                    <button class="key unit-key" data-unit="Ω">Ω</button>
+                    <button class="key unit-key" data-unit="k">kΩ</button>
+                    <button class="key unit-key" data-unit="M">MΩ</button>
+                </div>
+            </div>
+            <div id="game-over-modal" class="hidden">
+                <div class="modal-content">
+                    <h2>ゲームオーバー！</h2>
+                    <p>最終スコア: <span id="final-score"></span></p>
+                    <button id="restart-button">もう一度プレイ</button>
+                </div>
+            </div>
+        </div>
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h2>🏆 本日の最高得点</h2>
+                <div id="today-best-score-wrapper">
+                    <p id="today-best-score" class="score-display">まだ記録がありません</p>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h2>📈 今日のランキング</h2>
+                <ol id="ranking-list">
+                    <li>まだ記録がありません</li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const startScreenEl = document.getElementById('start-screen');
+            const startButton = document.getElementById('start-button');
+            const gameContainerEl = document.getElementById('game-container');
+            const countdownOverlayEl = document.getElementById('countdown-overlay');
+            const scoreEl = document.getElementById('score');
+            const timerEl = document.getElementById('timer');
+            const band1El = document.getElementById('band1');
+            const band2El = document.getElementById('band2');
+            const band3El = document.getElementById('band3');
+            const band4El = document.getElementById('band4');
+            const inputDisplayEl = document.getElementById('input-display');
+            const feedbackEl = document.getElementById('feedback');
+            const keypadEl = document.getElementById('keypad');
+            const gameOverModalEl = document.getElementById('game-over-modal');
+            const finalScoreEl = document.getElementById('final-score');
+            const restartButton = document.getElementById('restart-button');
+            const todayBestScoreWrapperEl = document.getElementById('today-best-score-wrapper');
+            const todayBestScoreEl = document.getElementById('today-best-score');
+            const rankingListEl = document.getElementById('ranking-list');
+
+            // localStorage Keys and Game Constants
+            const TODAY_RANKING_KEY = 'resistorGameTodayRanking';
+            const TODAY_BEST_KEY = 'resistorGameTodayBest';
+            const GAME_DURATION = 60;
+            const COUNTDOWN_SECONDS = 3;
+
+            const COLORS = {
+                'black': { value: 0, color: '#000000' }, 'brown': { value: 1, color: '#a52a2a' },
+                'red': { value: 2, color: '#ff0000' }, 'orange': { value: 3, color: '#ffa500' },
+                'yellow': { value: 4, color: '#ffff00' }, 'green': { value: 5, color: '#008000' },
+                'blue': { value: 6, color: '#0000ff' }, 'violet': { value: 7, color: '#ee82ee' },
+                'grey': { value: 8, color: '#808080' }, 'white': { value: 9, color: '#ffffff' }
+            };
+            const MULTIPLIER_COLORS = {
+                'silver': { multiplier: 0.01, color: '#c0c0c0' }, 'gold': { multiplier: 0.1, color: '#ffd700' },
+                'black': { multiplier: 1, color: '#000000' }, 'brown': { multiplier: 10, color: '#a52a2a' },
+                'red': { multiplier: 100, color: '#ff0000' }, 'orange': { multiplier: 1000, color: '#ffa500' },
+                'yellow': { multiplier: 10000, color: '#ffff00' }, 'green': { multiplier: 100000, color: '#008000' },
+                'blue': { multiplier: 1000000, color: '#0000ff' }
+            };
+            const TOLERANCE_COLOR = { 'gold': '#ffd700' };
+
+            const E24_VALUES = [
+                1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0,
+                3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1
+            ];
+
+            const COLOR_NAMES = Object.keys(COLORS);
+            const MULTIPLIER_COLOR_NAMES = Object.keys(MULTIPLIER_COLORS);
+
+            // Game state
+            let score, timeLeft, timerInterval, currentResistanceValue, playerInput;
+            let isGameActive = false;
+            let feedbackTimeoutId;
+
+            function getRandomElement(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
+            function generateResistor() {
+                const baseValue = getRandomElement(E24_VALUES);
+                const multiplierPower = Math.floor(Math.random() * 7);
+                const multiplier = Math.pow(10, multiplierPower);
+                currentResistanceValue = baseValue * multiplier;
+                
+                let significantDigits = Math.round(baseValue * 10);
+                let bandMultiplier = multiplier / 10;
+
+                const digit1 = Math.floor(significantDigits / 10);
+                const digit2 = significantDigits % 10;
+
+                const color1Name = COLOR_NAMES.find(name => COLORS[name].value === digit1);
+                const color2Name = COLOR_NAMES.find(name => COLORS[name].value === digit2);
+                const multiplierColorName = MULTIPLIER_COLOR_NAMES.find(name => Math.abs(MULTIPLIER_COLORS[name].multiplier - bandMultiplier) < 0.001);
+                
+                band1El.style.backgroundColor = color1Name ? COLORS[color1Name].color : 'transparent';
+                band2El.style.backgroundColor = color2Name ? COLORS[color2Name].color : 'transparent';
+                band3El.style.backgroundColor = multiplierColorName ? MULTIPLIER_COLORS[multiplierColorName].color : 'transparent';
+                band4El.style.backgroundColor = TOLERANCE_COLOR['gold'];
+            }
+            
+            function handleKeyPress(key) {
+                if (!isGameActive) return;
+
+                if (key === 'C') {
+                    playerInput = '';
+                } else if (key === '.') {
+                    if (playerInput.length > 0 && !playerInput.includes('.')) {
+                        playerInput += '.';
+                    }
+                } else if (!['Ω', 'k', 'M'].includes(key)) {
+                    playerInput += key;
+                }
+
+                if (['Ω', 'k', 'M'].includes(key)) {
+                    if (playerInput.length > 0 && !/[kM]$/.test(playerInput)) {
+                        if (key !== 'Ω') {
+                            playerInput += key;
+                        }
+                        inputDisplayEl.textContent = playerInput + 'Ω';
+                        checkAnswer();
+                        return;
+                    }
+                }
+                
+                updateDisplay();
+            }
+
+            function updateDisplay() {
+                inputDisplayEl.textContent = playerInput;
+            }
+            
+            function parsePlayerInput() {
+                let valueStr = playerInput;
+                let numericValue = 0;
+
+                if (valueStr.endsWith('k')) {
+                    numericValue = parseFloat(valueStr.slice(0, -1)) * 1000;
+                } else if (valueStr.endsWith('M')) {
+                    numericValue = parseFloat(valueStr.slice(0, -1)) * 1000000;
+                } else {
+                    numericValue = parseFloat(valueStr);
+                }
+                
+                return isNaN(numericValue) ? null : numericValue;
+            }
+
+            function checkAnswer() {
+                const playerValue = parsePlayerInput();
+                if (playerValue === null) return;
+
+                isGameActive = false;
+                clearTimeout(feedbackTimeoutId);
+                
+                if (Math.abs(playerValue - currentResistanceValue) < 0.01) {
+                    score += 10;
+                    feedbackEl.textContent = "正解！ 🎉";
+                    feedbackEl.className = 'correct';
+                } else {
+                    feedbackEl.textContent = `残念！正解は ${formatResistance(currentResistanceValue)}Ω`;
+                    feedbackEl.className = 'incorrect';
+                }
+                
+                scoreEl.textContent = score;
+                
+                feedbackTimeoutId = setTimeout(() => {
+                    if (timerInterval) {
+                        playerInput = '';
+                        updateDisplay();
+                        feedbackEl.textContent = ''; // メッセージをクリア
+                        generateResistor();
+                        isGameActive = true;
+                    }
+                }, 1200);
+            }
+
+            function formatResistance(value) {
+                const cleanValue = parseFloat(value.toPrecision(12));
+                if (cleanValue >= 1000000) {
+                    return String(cleanValue / 1000000) + 'M';
+                }
+                if (cleanValue >= 1000) {
+                    return String(cleanValue / 1000) + 'k';
+                }
+                return String(cleanValue);
+            }
+            
+            function startCountdown() {
+                startScreenEl.classList.add('hidden');
+                gameOverModalEl.classList.add('hidden');
+                gameContainerEl.classList.remove('hidden');
+                countdownOverlayEl.classList.remove('hidden');
+                
+                let count = COUNTDOWN_SECONDS;
+                countdownOverlayEl.textContent = count;
+                
+                const countdownInterval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownOverlayEl.textContent = count;
+                    } else {
+                        clearInterval(countdownInterval);
+                        countdownOverlayEl.classList.add('hidden');
+                        setTimeout(runGame, 10); 
+                    }
+                }, 1000);
+            }
+            
+            function runGame() {
+                isGameActive = true;
+                score = 0;
+                timeLeft = GAME_DURATION;
+                playerInput = '';
+                
+                clearTimeout(feedbackTimeoutId);
+                if(timerInterval) clearInterval(timerInterval);
+
+                scoreEl.textContent = score;
+                timerEl.textContent = timeLeft;
+                feedbackEl.textContent = ''; // ゲーム開始時にフィードバックをクリア
+                updateDisplay();
+                
+                generateResistor();
+
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+            }
+
+            function endGame() {
+                isGameActive = false;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                clearTimeout(feedbackTimeoutId);
+                timerEl.textContent = 0;
+                
+                finalScoreEl.innerHTML = `${score} 点 <span class="timestamp">(${formatTimestamp(Date.now())})</span>`;
+                gameOverModalEl.classList.remove('hidden');
+
+                saveScores(score);
+                updateSidebar();
+            }
+
+            function formatTimestamp(timestamp) {
+                if (!timestamp) return '';
+                const date = new Date(timestamp);
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${month}/${day} ${hours}:${minutes}`;
+            }
+            
+            function getTodayDateString() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function saveScores(newScore) {
+                if (newScore <= 0) return;
+                
+                const timestamp = Date.now();
+                const today = getTodayDateString();
+                const scoreEntry = { score: newScore, ts: timestamp };
+
+                let todayRankingData = JSON.parse(localStorage.getItem(TODAY_RANKING_KEY)) || { date: '', scores: [] };
+                if (todayRankingData.date !== today) {
+                    todayRankingData = { date: today, scores: [] };
+                }
+                todayRankingData.scores.push(scoreEntry);
+                todayRankingData.scores.sort((a, b) => b.score - a.score);
+                todayRankingData.scores = todayRankingData.scores.slice(0, 5);
+                localStorage.setItem(TODAY_RANKING_KEY, JSON.stringify(todayRankingData));
+
+                const todayBestData = JSON.parse(localStorage.getItem(TODAY_BEST_KEY)) || { score: 0, date: '', ts: 0 };
+                if (todayBestData.date !== today || newScore > todayBestData.score) {
+                    localStorage.setItem(TODAY_BEST_KEY, JSON.stringify({ score: newScore, date: today, ts: timestamp }));
+                }
+            }
+
+            function updateSidebar() {
+                const today = getTodayDateString();
+
+                const todayRankingData = JSON.parse(localStorage.getItem(TODAY_RANKING_KEY)) || { date: '', scores: [] };
+                rankingListEl.innerHTML = ''; 
+                if (todayRankingData.date === today && todayRankingData.scores.length > 0) {
+                    todayRankingData.scores.forEach((entry, index) => {
+                        const li = document.createElement('li');
+                        const scoreSpan = document.createElement('span');
+                        const timeSpan = document.createElement('span');
+
+                        if (index === 0) scoreSpan.innerHTML = `🥇 ${entry.score} 点`;
+                        else if (index === 1) scoreSpan.innerHTML = `🥈 ${entry.score} 点`;
+                        else if (index === 2) scoreSpan.innerHTML = `🥉 ${entry.score} 点`;
+                        else scoreSpan.innerHTML = `${"&nbsp;".repeat(4)} ${entry.score} 点`;
+                        
+                        timeSpan.className = 'timestamp';
+                        timeSpan.textContent = formatTimestamp(entry.ts);
+                        
+                        li.appendChild(scoreSpan);
+li.appendChild(timeSpan);
+                        rankingListEl.appendChild(li);
+                    });
+                } else {
+                    rankingListEl.innerHTML = '<li>まだ記録がありません</li>';
+                }
+
+                const todayBestData = JSON.parse(localStorage.getItem(TODAY_BEST_KEY)) || { score: 0, date: '', ts: 0 };
+                todayBestScoreWrapperEl.innerHTML = ''; 
+                if (todayBestData.date === today && todayBestData.score > 0) {
+                    todayBestScoreEl.textContent = `${todayBestData.score} 点`;
+                    const timeSpan = document.createElement('span');
+                    timeSpan.className = 'timestamp';
+                    timeSpan.textContent = `(${formatTimestamp(todayBestData.ts)})`;
+                    todayBestScoreWrapperEl.appendChild(todayBestScoreEl);
+                    todayBestScoreWrapperEl.appendChild(timeSpan);
+                } else {
+                    todayBestScoreEl.textContent = 'まだ記録がありません';
+                    todayBestScoreWrapperEl.appendChild(todayBestScoreEl);
+                }
+            }
+            
+            // --- Event Listeners ---
+            startButton.addEventListener('click', startCountdown);
+            restartButton.addEventListener('click', startCountdown);
+
+            keypadEl.addEventListener('click', (e) => {
+                if (e.target.matches('button.key')) {
+                    const key = e.target.dataset.unit || e.target.textContent;
+                    handleKeyPress(key);
+                }
+            });
+
+            // --- Initial setup ---
+            updateSidebar();
+        });
+    </script>
+</body>
+</html>
